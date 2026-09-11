@@ -1,0 +1,2424 @@
+<div
+    class="min-h-screen bg-gray-100"
+    data-cms-page-builder
+    data-wire-id="{{ $this->getId() }}"
+>
+{{-- ============================================================
+    TOP BAR
+============================================================= --}}
+<div class="sticky top-0 z-40 flex h-14 items-center justify-between
+            border-b border-gray-200 bg-white px-4 shadow-sm">
+
+    <div class="flex items-center gap-3">
+
+        <a
+            href="{{ \App\Filament\Resources\CmsPages\CmsPageResource::getUrl('index') }}"
+            class="text-sm font-medium text-gray-600 hover:text-gray-900"
+        >
+            ← Back
+        </a>
+
+        <div class="h-5 w-px bg-gray-200"></div>
+
+        <span class="text-sm font-semibold text-gray-900">
+            Page Builder
+        </span>
+
+    </div>
+
+    <div class="flex items-center gap-2">
+
+        <button
+            type="button"
+            wire:click="openSettings"
+            class="rounded-lg border border-gray-200 bg-white px-3 py-2
+                   text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+            Settings
+        </button>
+
+        <a
+            href="{{ $this->pageUrl }}"
+            target="_blank"
+            class="rounded-lg border border-gray-200 bg-white px-3 py-2
+                   text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+            Preview
+        </a>
+
+        <button
+            type="button"
+            wire:click="saveBuilder"
+            wire:loading.attr="disabled"
+            class="rounded-lg bg-primary-600 px-4 py-2 text-sm
+                   font-semibold text-white hover:bg-primary-700"
+        >
+            <span wire:loading.remove wire:target="saveBuilder">
+                Save
+            </span>
+
+            <span wire:loading wire:target="saveBuilder">
+                Saving...
+            </span>
+        </button>
+
+        <button
+            type="button"
+            wire:click="publishPage"
+            wire:loading.attr="disabled"
+            class="rounded-lg bg-gray-900 px-4 py-2 text-sm
+                   font-semibold text-white hover:bg-gray-800"
+        >
+            Publish
+        </button>
+
+    </div>
+</div>
+
+
+{{-- ============================================================
+    PAGE INFORMATION
+============================================================= --}}
+<div class="border-b border-gray-200 bg-white px-6 py-5">
+
+    <div class="mx-auto max-w-7xl">
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                    Page Title
+                </label>
+
+                <input
+                    type="text"
+                    wire:model.live="title"
+                    wire:blur="savePageInfo"
+                    class="block w-full rounded-lg border-gray-300
+                           shadow-sm focus:border-primary-500
+                           focus:ring-primary-500"
+                >
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">
+                    Slug
+                </label>
+
+                <input
+                    type="text"
+                    wire:model.live="slug"
+                    wire:blur="savePageInfo"
+                    class="block w-full rounded-lg border-gray-300
+                           shadow-sm focus:border-primary-500
+                           focus:ring-primary-500"
+                >
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+
+{{-- ============================================================
+    PAGE URL
+============================================================= --}}
+<div class="border-b border-gray-200 bg-white px-6 py-4">
+
+    <div class="mx-auto max-w-7xl">
+
+        <label class="mb-1.5 block text-sm font-medium text-gray-700">
+            Page URL
+        </label>
+
+        <div class="flex gap-2">
+
+            <input
+                type="text"
+                readonly
+                value="{{ $this->pageUrl }}"
+                class="flex-1 rounded-lg border-gray-300
+                       bg-gray-50 text-gray-600"
+            >
+
+            <button
+                type="button"
+                x-data
+                x-on:click="navigator.clipboard.writeText(@js($this->pageUrl))"
+                class="rounded-lg bg-gray-900 px-4 py-2 text-sm
+                       font-medium text-white hover:bg-gray-800"
+            >
+                Copy
+            </button>
+
+            <button
+                type="button"
+                x-data
+                x-on:click="navigator.clipboard.writeText(@js($this->pageHtml))"
+                class="rounded-lg border border-gray-300 bg-white px-4 py-2
+                       text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+                Copy HTML
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
+
+{{-- ============================================================
+    BUILDER CANVAS
+============================================================= --}}
+<div
+    class="relative"
+    x-data
+>
+
+    <div class="mx-auto w-full max-w-7xl px-6 py-8">
+
+        {{-- Empty state --}}
+        @if (empty($tree['root']['children'] ?? []))
+
+            <div class="mb-6 flex min-h-64 items-center justify-center
+                        rounded-2xl border-2 border-dashed border-gray-300
+                        bg-white">
+
+                <div class="text-center">
+
+                    <div class="mx-auto mb-4 flex h-14 w-14 items-center
+                                justify-center rounded-full bg-gray-100
+                                text-2xl text-gray-400">
+                        +
+                    </div>
+
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        Start building your page
+                    </h2>
+
+                    <p class="mt-1 text-sm text-gray-500">
+                        Add your first section to begin.
+                    </p>
+
+                </div>
+
+            </div>
+
+        @endif
+
+
+        {{-- ====================================================
+            SECTIONS
+        ===================================================== --}}
+
+        <div
+            wire:sort="sortSections"
+            class="space-y-6"
+        >
+
+            @foreach (($tree['root']['children'] ?? []) as $sectionIndex => $section)
+
+                <div
+                    wire:key="section-{{ $section['uuid'] }}"
+                    data-uuid="{{ $section['uuid'] }}"
+                    class="group rounded-2xl border border-gray-200
+                           bg-white shadow-sm"
+                >
+
+                    {{-- Section Header --}}
+                    <div class="flex items-center justify-between
+                                rounded-t-2xl border-b border-gray-200
+                                bg-gray-50 px-4 py-2.5">
+
+                        <div class="flex items-center gap-3">
+
+                            <button
+                                type="button"
+                                wire:sort:handle
+                                title="Drag section"
+                                class="cursor-grab text-gray-400 hover:text-gray-700 active:cursor-grabbing"
+                            >
+                                ⋮⋮
+                            </button>
+
+                            <span class="text-xs font-semibold uppercase
+                                         tracking-wide text-gray-500">
+                                Section
+                            </span>
+
+                        </div>
+
+                        <div class="flex items-center gap-1">
+
+                            <button
+                                type="button"
+                                wire:click="selectNode('{{ $section['uuid'] }}')"
+                                class="rounded-md px-2 py-1 text-xs
+                                       text-gray-500 hover:bg-white
+                                       hover:text-gray-900"
+                            >
+                                Edit
+                            </button>
+
+                            <button
+                                type="button"
+                                wire:click="duplicateNode('{{ $section['uuid'] }}')"
+                                class="rounded-md px-2 py-1 text-xs
+                                       text-gray-500 hover:bg-white
+                                       hover:text-gray-900"
+                            >
+                                Duplicate
+                            </button>
+
+                            <button
+                                type="button"
+                                wire:click="deleteNode('{{ $section['uuid'] }}')"
+                                wire:confirm="Delete this section?"
+                                class="rounded-md px-2 py-1 text-xs
+                                       text-gray-500 hover:bg-red-50
+                                       hover:text-red-600"
+                            >
+                                Delete
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- Section Content --}}
+                    <div class="p-4">
+
+                        {{-- =================================================
+                            ROWS
+                        ================================================== --}}
+                        <div
+                            wire:sort="sortRows"
+                            wire:sort:group="builder-rows"
+                            wire:sort:group-id="{{ $section['uuid'] }}"
+                            class="space-y-4"
+                        >
+
+                            @foreach (($section['children'] ?? []) as $rowIndex => $row)
+
+                                <div
+                                    wire:key="row-{{ $row['uuid'] }}"
+                                    wire:sort:item="{{ $row['uuid'] }}"
+                                    class="group/row rounded-xl border
+                                           border-dashed border-gray-300
+                                           bg-gray-50"
+                                >
+
+                                    {{-- Row Header --}}
+                                    <div class="flex items-center justify-between
+                                                border-b border-gray-200
+                                                bg-white px-3 py-2">
+
+                                        <div class="flex items-center gap-2">
+
+                                            <button
+                                                type="button"
+                                                wire:sort:handle
+                                                title="Drag row"
+                                                class="cursor-grab text-gray-400 hover:text-gray-700 active:cursor-grabbing"
+                                            >
+                                                ⋮⋮
+                                            </button>
+
+                                            <span class="text-[11px] font-semibold
+                                                         uppercase tracking-wide
+                                                         text-gray-400">
+                                                Row
+                                            </span>
+
+                                        </div>
+
+                                        <div class="flex items-center gap-1">
+
+                                            <button
+                                                type="button"
+                                                wire:click="selectNode('{{ $row['uuid'] }}')"
+                                                class="rounded px-2 py-1 text-xs
+                                                       text-gray-500 hover:bg-gray-100
+                                                       hover:text-gray-900"
+                                            >
+                                                Edit
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                wire:click="duplicateNode('{{ $row['uuid'] }}')"
+                                                class="rounded px-2 py-1 text-xs
+                                                       text-gray-500 hover:bg-gray-100
+                                                       hover:text-gray-900"
+                                            >
+                                                Duplicate
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                wire:click="deleteNode('{{ $row['uuid'] }}')"
+                                                wire:confirm="Delete this row?"
+                                                class="rounded px-2 py-1 text-xs
+                                                       text-gray-500 hover:bg-red-50
+                                                       hover:text-red-600"
+                                            >
+                                                Delete
+                                            </button>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    {{-- =================================================
+                                        COLUMNS
+                                    ================================================== --}}
+                                    <div
+                                        wire:sort="sortColumns"
+                                        wire:sort:group="builder-columns"
+                                        wire:sort:group-id="{{ $row['uuid'] }}"
+                                        class="flex flex-wrap items-start p-3"
+                                    >
+
+                                        @foreach (($row['children'] ?? []) as $columnIndex => $column)
+
+                                            @php
+                                                $width = (float) ($column['props']['width'] ?? 100);
+                                            @endphp
+
+                                            <div
+                                                wire:key="column-{{ $column['uuid'] }}"
+                                                wire:sort:item="{{ $column['uuid'] }}"
+                                                class="relative min-w-0 box-border p-1.5"
+                                                style="
+                                                    width: {{ $width }}%;
+                                                    flex-basis: {{ $width }}%;
+                                                    flex-grow: 0;
+                                                    flex-shrink: 0;
+                                                    border: 1px solid #e4e4e7;
+                                                    border-radius: 5px;
+                                                    padding: 5px;
+                                                "
+                                            >
+
+                                                {{-- Column Header --}}
+                                                <div class="mb-3 flex items-center
+                                                            justify-between">
+
+                                                    <div class="flex items-center gap-2">
+
+                                                        <button
+                                                            type="button"
+                                                            wire:sort:handle
+                                                            title="Drag column"
+                                                            class="cursor-grab text-gray-400 hover:text-gray-700 active:cursor-grabbing"
+                                                        >
+                                                            ⋮⋮
+                                                        </button>
+
+                                                        <span class="text-[10px]
+                                                                     font-semibold
+                                                                     uppercase
+                                                                     tracking-wide
+                                                                     text-gray-400">
+                                                            Column
+                                                            {{ $columnIndex + 1 }}
+                                                        </span>
+
+                                                        <span class="rounded bg-gray-100
+                                                                     px-1.5 py-0.5
+                                                                     text-[10px]
+                                                                     font-medium
+                                                                     text-gray-500">
+                                                            {{ rtrim(rtrim(number_format($width, 2), '0'), '.') }}%
+                                                        </span>
+
+                                                    </div>
+
+                                                    <div class="flex items-center gap-1">
+
+                                                        <button
+                                                            type="button"
+                                                            wire:click="selectNode('{{ $column['uuid'] }}')"
+                                                            class="rounded px-1.5 py-1
+                                                                   text-[10px]
+                                                                   text-gray-500
+                                                                   hover:bg-gray-100
+                                                                   hover:text-gray-900"
+                                                        >
+                                                            Edit
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            wire:click="duplicateNode('{{ $column['uuid'] }}')"
+                                                            class="rounded px-1.5 py-1
+                                                                   text-[10px]
+                                                                   text-gray-500
+                                                                   hover:bg-gray-100"
+                                                        >
+                                                            ⧉
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            wire:click="deleteNode('{{ $column['uuid'] }}')"
+                                                            wire:confirm="Delete this column?"
+                                                            class="rounded px-1.5 py-1
+                                                                   text-[10px]
+                                                                   text-gray-500
+                                                                   hover:bg-red-50
+                                                                   hover:text-red-600"
+                                                        >
+                                                            🗑
+                                                        </button>
+
+                                                    </div>
+
+                                                </div>
+
+
+                                                {{-- =================================================
+                                                    ELEMENTS
+                                                ================================================== --}}
+                                                <div
+                                                    data-sortable="elements"
+                                                    data-parent-uuid="{{ $column['uuid'] }}"
+                                                    class="space-y-3"
+                                                >
+
+                                                    @foreach (($column['children'] ?? []) as $element)
+
+                                                        <div
+                                                            wire:key="element-{{ $element['uuid'] }}"
+                                                            data-draggable="element"
+                                                            data-uuid="{{ $element['uuid'] }}"
+                                                            wire:click="selectNode('{{ $element['uuid'] }}')"
+                                                            class="group/element cursor-pointer
+                                                                   rounded-xl border
+                                                                   border-gray-200
+                                                                   bg-white p-4
+                                                                   transition
+                                                                   hover:border-primary-400
+                                                                   hover:shadow-sm"
+                                                        >
+
+                                                            <div class="mb-3 flex items-center
+                                                                        justify-between">
+
+                                                                <div class="flex items-center gap-2">
+
+                                                                    <button
+                                                                        type="button"
+                                                                        data-drag-handle="element"
+                                                                        title="Drag element"
+                                                                        wire:click.stop
+                                                                        x-on:click.stop
+                                                                        class="cursor-grab text-gray-300
+                                                                               hover:text-gray-600
+                                                                               active:cursor-grabbing"
+                                                                    >
+                                                                        ⋮⋮
+                                                                    </button>
+
+                                                                    <span class="rounded bg-gray-100
+                                                                                 px-2 py-1 text-[10px]
+                                                                                 font-semibold uppercase
+                                                                                 tracking-wide
+                                                                                 text-gray-500">
+                                                                        {{ $element['type'] }}
+                                                                    </span>
+
+                                                                </div>
+
+                                                                <div
+                                                                    class="hidden items-center gap-1
+                                                                           group-hover/element:flex"
+                                                                >
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click.stop="duplicateNode('{{ $element['uuid'] }}')"
+                                                                        class="rounded px-2 py-1
+                                                                               text-xs text-gray-500
+                                                                               hover:bg-gray-100"
+                                                                    >
+                                                                        Duplicate
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click.stop="deleteNode('{{ $element['uuid'] }}')"
+                                                                        wire:confirm="Delete this element?"
+                                                                        class="rounded px-2 py-1
+                                                                               text-xs text-gray-500
+                                                                               hover:bg-red-50
+                                                                               hover:text-red-600"
+                                                                    >
+                                                                        Delete
+                                                                    </button>
+
+                                                                </div>
+
+                                                            </div>
+
+
+                                                            {{-- Heading --}}
+                                                            @if ($element['type'] === 'heading')
+
+                                                                @php
+                                                                    $level = $element['props']['level'] ?? 'h2';
+                                                                @endphp
+
+                                                                @if ($level === 'h1')
+
+                                                                    <h1 class="text-3xl font-bold text-gray-900">
+                                                                        {{ $element['props']['text']['key'] ?? 'Heading' }}
+                                                                    </h1>
+
+                                                                @elseif ($level === 'h3')
+
+                                                                    <h3 class="text-xl font-bold text-gray-900">
+                                                                        {{ $element['props']['text']['key'] ?? 'Heading' }}
+                                                                    </h3>
+
+                                                                @elseif ($level === 'h4')
+
+                                                                    <h4 class="text-lg font-bold text-gray-900">
+                                                                        {{ $element['props']['text']['key'] ?? 'Heading' }}
+                                                                    </h4>
+
+                                                                @elseif ($level === 'h5')
+
+                                                                    <h5 class="text-base font-bold text-gray-900">
+                                                                        {{ $element['props']['text']['key'] ?? 'Heading' }}
+                                                                    </h5>
+
+                                                                @elseif ($level === 'h6')
+
+                                                                    <h6 class="text-sm font-bold text-gray-900">
+                                                                        {{ $element['props']['text']['key'] ?? 'Heading' }}
+                                                                    </h6>
+
+                                                                @else
+
+                                                                    <h2 class="text-2xl font-bold text-gray-900">
+                                                                        {{ $element['props']['text']['key'] ?? 'Heading' }}
+                                                                    </h2>
+
+                                                                @endif
+
+
+                                                            {{-- Text --}}
+                                                            @elseif ($element['type'] === 'text')
+
+                                                                <p class="text-sm leading-6 text-gray-600">
+                                                                    {{ $element['props']['text']['key'] ?? 'Text element' }}
+                                                                </p>
+
+
+                                                            {{-- Button --}}
+                                                            @elseif ($element['type'] === 'button')
+
+                                                                <button
+                                                                    type="button"
+                                                                    class="rounded-lg bg-gray-900
+                                                                           px-4 py-2 text-sm
+                                                                           font-medium text-white"
+                                                                >
+                                                                    {{ $element['props']['label']['key'] ?? 'Button' }}
+                                                                </button>
+
+
+                                                            {{-- Image --}}
+                                                            @elseif ($element['type'] === 'image')
+
+                                                                @if (!empty($element['props']['media_url']))
+
+                                                                    <div
+                                                                        class="flex w-full items-center
+                                                                               justify-center overflow-hidden
+                                                                               rounded-lg bg-gray-50"
+                                                                    >
+                                                                        <img
+                                                                            src="{{ $element['props']['media_url'] }}"
+                                                                            alt="{{ $element['props']['alt']['key'] ?? '' }}"
+                                                                            class="max-h-48 max-w-full object-contain"
+                                                                        >
+                                                                    </div>
+
+                                                                @else
+
+                                                                    <div
+                                                                        class="flex min-h-24 items-center
+                                                                               justify-center rounded-lg
+                                                                               bg-gray-100 text-sm
+                                                                               text-gray-400"
+                                                                    >
+                                                                        Image
+                                                                    </div>
+
+                                                                @endif
+
+
+                                                            {{-- Video --}}
+                                                            @elseif ($element['type'] === 'video')
+
+                                                                @if (!empty($element['props']['media_url']))
+
+                                                                    <div
+                                                                        class="w-full overflow-hidden
+                                                                               rounded-lg bg-gray-900"
+                                                                    >
+
+                                                                        <video
+                                                                            src="{{ $element['props']['media_url'] }}"
+                                                                            @if (!empty($element['props']['poster_url']))
+                                                                                poster="{{ $element['props']['poster_url'] }}"
+                                                                            @endif
+                                                                            @if (!empty($element['props']['autoplay']))
+                                                                                autoplay
+                                                                            @endif
+                                                                            @if (!empty($element['props']['loop']))
+                                                                                loop
+                                                                            @endif
+                                                                            @if (!empty($element['props']['muted']))
+                                                                                muted
+                                                                            @endif
+                                                                            @if (!empty($element['props']['controls']))
+                                                                                controls
+                                                                            @endif
+                                                                            class="max-h-96 w-full object-contain"
+                                                                        ></video>
+
+                                                                    </div>
+
+                                                                @else
+
+                                                                    <div
+                                                                        class="flex min-h-24 items-center
+                                                                               justify-center rounded-lg
+                                                                               bg-gray-900 text-sm
+                                                                               text-white"
+                                                                    >
+                                                                        Video
+                                                                    </div>
+
+                                                                @endif
+
+
+                                                            {{-- Spacer --}}
+                                                            @elseif ($element['type'] === 'spacer')
+
+                                                                <div
+                                                                    class="flex items-center
+                                                                           justify-center rounded-lg
+                                                                           border border-dashed
+                                                                           border-gray-200
+                                                                           bg-gray-50 py-4
+                                                                           text-xs text-gray-400"
+                                                                >
+                                                                    Spacer
+                                                                    ({{ $element['props']['height'] ?? 40 }}px)
+                                                                </div>
+
+
+                                                            {{-- HTML --}}
+                                                            @elseif ($element['type'] === 'html')
+
+                                                                <div
+                                                                    class="rounded-lg bg-gray-100
+                                                                           p-3 font-mono text-xs
+                                                                           text-gray-500"
+                                                                >
+                                                                    HTML
+                                                                </div>
+
+
+                                                            {{-- Other --}}
+                                                            @else
+
+                                                                <div class="text-sm text-gray-500">
+                                                                    {{ ucfirst($element['type']) }}
+                                                                </div>
+
+                                                            @endif
+
+                                                        </div>
+
+                                                    @endforeach
+
+                                                </div>
+
+
+                                                {{-- Add Element --}}
+                                                <button
+                                                    type="button"
+                                                    wire:click="openElements('{{ $column['uuid'] }}')"
+                                                    class="mt-3 flex w-full items-center
+                                                           justify-center rounded-lg
+                                                           border border-dashed
+                                                           border-gray-300 py-3
+                                                           text-sm font-medium
+                                                           text-gray-400
+                                                           transition
+                                                           hover:border-primary-400
+                                                           hover:bg-primary-50
+                                                           hover:text-primary-600"
+                                                >
+                                                    + Add Element
+                                                </button>
+
+                                            </div>
+
+                                        @endforeach
+
+                                    </div>
+
+
+                                    {{-- Add Column --}}
+                                    <div class="mt-3 border-t border-gray-200 pt-3">
+
+                                        <button
+                                            type="button"
+                                            wire:click="addColumn('{{ $row['uuid'] }}')"
+                                            class="flex w-full items-center justify-center
+                                                   rounded-lg border border-dashed
+                                                   border-gray-300 bg-white py-2.5
+                                                   text-sm font-medium text-gray-500
+                                                   transition hover:border-primary-400
+                                                   hover:bg-primary-50
+                                                   hover:text-primary-600"
+                                        >
+                                            + Add Column
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            @endforeach
+
+                        </div>
+
+
+                        {{-- Add Row --}}
+                        <div class="mt-4 border-t border-gray-200 pt-4">
+
+                            <button
+                                type="button"
+                                wire:click="addRow('{{ $section['uuid'] }}')"
+                                class="flex w-full items-center justify-center
+                                       rounded-lg border border-dashed
+                                       border-gray-300 bg-white py-3
+                                       text-sm font-medium text-gray-500
+                                       transition hover:border-primary-400
+                                       hover:bg-primary-50
+                                       hover:text-primary-600"
+                            >
+                                + Add Row
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            @endforeach
+
+        </div>
+
+
+        {{-- Add Section --}}
+        <button
+            type="button"
+            wire:click="openSectionLayout"
+            class="mt-6 flex min-h-28 w-full items-center justify-center
+                   rounded-2xl border-2 border-dashed
+                   border-gray-300 bg-white
+                   text-sm font-semibold text-gray-500
+                   transition hover:border-primary-400
+                   hover:bg-primary-50 hover:text-primary-600"
+        >
+            + Add Section
+        </button>
+
+    </div>
+
+
+    {{-- ========================================================
+        MODAL
+    ======================================================== --}}
+    @if ($panel)
+
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center
+                   overflow-hidden bg-black/40 px-4 py-6"
+            wire:click.self="closePanel"
+        >
+
+            <div
+                class="relative flex w-full max-w-xl flex-col
+                       overflow-hidden rounded-xl bg-white shadow-2xl"
+                style="height: 85vh; max-height: 85vh;"
+            >
+
+                {{-- MODAL HEADER --}}
+                <div
+                    class="relative z-10 flex shrink-0 items-center justify-between
+                           border-b border-gray-200 bg-white px-5 py-4"
+                >
+
+                    <div>
+
+                        @if ($panel === 'section-layout')
+
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                Add Section
+                            </h2>
+
+                            <p class="mt-0.5 text-sm text-gray-500">
+                                Choose your section layout
+                            </p>
+
+                        @elseif ($panel === 'elements')
+
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                Add Element
+                            </h2>
+
+                            <p class="mt-0.5 text-sm text-gray-500">
+                                Choose an element to add
+                            </p>
+
+                        @elseif ($panel === 'properties')
+
+                            @php
+                                $selectedNode = $selectedNodeId
+                                    ? $this->findNode($tree['root'] ?? [], $selectedNodeId)
+                                    : null;
+
+                                $selectedType = $selectedNode['type'] ?? null;
+
+                                $typeLabels = [
+                                    'section' => 'Section',
+                                    'row' => 'Row',
+                                    'column' => 'Column',
+                                    'heading' => 'Heading',
+                                    'text' => 'Text',
+                                    'image' => 'Image',
+                                    'video' => 'Video',
+                                    'button' => 'Button',
+                                    'spacer' => 'Spacer',
+                                    'html' => 'HTML',
+                                ];
+                            @endphp
+
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                Edit {{ $typeLabels[$selectedType] ?? 'Block' }}
+                            </h2>
+
+                            <p class="mt-0.5 text-sm text-gray-500">
+                                Configure this block
+                            </p>
+
+                        @elseif ($panel === 'settings')
+
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                Page Settings
+                            </h2>
+
+                            <p class="mt-0.5 text-sm text-gray-500">
+                                Manage page settings
+                            </p>
+
+                        @endif
+
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="closePanel"
+                        class="rounded-lg p-2 text-gray-400
+                               hover:bg-gray-100 hover:text-gray-700"
+                    >
+                        <x-filament::icon
+                            icon="heroicon-m-x-mark"
+                            class="h-5 w-5"
+                        />
+                    </button>
+
+                </div>
+
+
+                {{-- PANEL CONTENT --}}
+                <div
+                    class="min-h-0 flex-1 overflow-hidden"
+                    style="min-height: 0;"
+                >
+
+                    {{-- ==================================================
+                        SECTION LAYOUTS
+                    =================================================== --}}
+                    @if ($panel === 'section-layout')
+
+                        <div
+                            class="h-full overflow-y-auto p-6"
+                            style="height: 100%; overflow-y: auto;"
+                        >
+
+                            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([100])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-full rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        100%
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        One column
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([50,50])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-1/2 rounded bg-gray-200"></div>
+                                        <div class="w-1/2 rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        50 / 50
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Two columns
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([33.333333,33.333333,33.333334])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-1/3 rounded bg-gray-200"></div>
+                                        <div class="w-1/3 rounded bg-gray-200"></div>
+                                        <div class="w-1/3 rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        33 / 33 / 33
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Three columns
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([25,75])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                        <div class="w-3/4 rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        25 / 75
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Two columns
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([75,25])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-3/4 rounded bg-gray-200"></div>
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        75 / 25
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Two columns
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([25,50,25])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                        <div class="w-1/2 rounded bg-gray-200"></div>
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        25 / 50 / 25
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Three columns
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([25,25,25,25])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                        <div class="w-1/4 rounded bg-gray-200"></div>
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        25 / 25 / 25 / 25
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Four columns
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([20,20,20,20,20])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left transition
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        @for ($i = 0; $i < 5; $i++)
+                                            <div class="min-w-0 flex-1 rounded bg-gray-200"></div>
+                                        @endfor
+                                    </div>
+
+                                    <div class="text-sm font-medium text-gray-900">
+                                        5 Columns
+                                    </div>
+
+                                    <div class="mt-1 text-xs text-gray-500">
+                                        20% / 20% / 20% / 20% / 20%
+                                    </div>
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    wire:click="addSection([
+                                        16.666666,
+                                        16.666666,
+                                        16.666666,
+                                        16.666666,
+                                        16.666666,
+                                        16.666670
+                                    ])"
+                                    class="rounded-xl border border-gray-200
+                                           p-4 text-left
+                                           hover:border-primary-500
+                                           hover:bg-primary-50"
+                                >
+                                    <div class="mb-3 flex h-12 gap-1">
+                                        @for ($i = 0; $i < 6; $i++)
+                                            <div class="flex-1 rounded bg-gray-200"></div>
+                                        @endfor
+                                    </div>
+
+                                    <div class="text-sm font-semibold">
+                                        6 Equal Columns
+                                    </div>
+
+                                    <div class="text-xs text-gray-500">
+                                        Six columns
+                                    </div>
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                    {{-- ==================================================
+                        ELEMENTS
+                    =================================================== --}}
+                    @elseif ($panel === 'elements')
+
+                        <div
+                            class="h-full overflow-y-auto p-6"
+                            style="height: 100%; overflow-y: auto;"
+                        >
+
+                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+
+                                @foreach ([
+                                    ['type' => 'heading', 'label' => 'Heading'],
+                                    ['type' => 'text', 'label' => 'Text'],
+                                    ['type' => 'image', 'label' => 'Image'],
+                                    ['type' => 'video', 'label' => 'Video'],
+                                    ['type' => 'button', 'label' => 'Button'],
+                                    ['type' => 'spacer', 'label' => 'Spacer'],
+                                    ['type' => 'html', 'label' => 'HTML'],
+                                ] as $element)
+
+                                    <button
+                                        type="button"
+                                        wire:click="addElement('{{ $element['type'] }}')"
+                                        class="rounded-xl border border-gray-200
+                                               p-5 text-left
+                                               hover:border-primary-500
+                                               hover:bg-primary-50"
+                                    >
+
+                                        <div class="mb-2 text-sm font-semibold text-gray-900">
+                                            {{ $element['label'] }}
+                                        </div>
+
+                                        <div class="text-xs text-gray-500">
+                                            Add {{ $element['label'] }}
+                                        </div>
+
+                                    </button>
+
+                                @endforeach
+
+                            </div>
+
+                        </div>
+
+
+                    {{-- ==================================================
+                        PROPERTIES
+                    =================================================== --}}
+                    @elseif ($panel === 'properties')
+
+                        @php
+                            $selectedNode = $selectedNodeId
+                                ? $this->findNode($tree['root'] ?? [], $selectedNodeId)
+                                : null;
+
+                            $selectedType = $selectedNode['type'] ?? null;
+
+                            $typeLabels = [
+                                'section' => 'Section',
+                                'row' => 'Row',
+                                'column' => 'Column',
+                                'heading' => 'Heading',
+                                'text' => 'Text',
+                                'image' => 'Image',
+                                'video' => 'Video',
+                                'button' => 'Button',
+                                'spacer' => 'Spacer',
+                                'html' => 'HTML',
+                            ];
+                        @endphp
+
+                        <div
+                            x-data="{ tab: 'general' }"
+                            class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
+                            style="height: 100%; min-height: 0;"
+                        >
+
+                            {{-- Responsive Tabs --}}
+                            <div class="shrink-0 border-b border-gray-200 px-5 pt-3">
+
+                                <div class="flex rounded-lg bg-gray-100 p-1">
+
+                                    @foreach ([
+                                        'desktop' => 'Desktop',
+                                        'tablet' => 'Tablet',
+                                        'mobile' => 'Mobile',
+                                    ] as $device => $label)
+
+                                        <button
+                                            type="button"
+                                            wire:click="setResponsiveDevice('{{ $device }}')"
+                                            class="flex-1 rounded-md px-3 py-1.5
+                                                   text-xs font-medium transition
+                                                   {{ $responsiveDevice === $device
+                                                        ? 'bg-white text-gray-900 shadow-sm'
+                                                        : 'text-gray-500 hover:text-gray-700' }}"
+                                        >
+                                            {{ $label }}
+                                        </button>
+
+                                    @endforeach
+
+                                </div>
+
+                            </div>
+
+
+                            {{-- Property Tabs --}}
+                            <div class="shrink-0 border-b border-gray-200 px-5">
+
+                                <div class="flex gap-5">
+
+                                    <button
+                                        type="button"
+                                        @click="tab = 'general'"
+                                        :class="tab === 'general'
+                                            ? 'border-primary-600 text-primary-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                        class="border-b-2 px-1 py-3 text-xs font-semibold"
+                                    >
+                                        General
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        @click="tab = 'style'"
+                                        :class="tab === 'style'
+                                            ? 'border-primary-600 text-primary-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                        class="border-b-2 px-1 py-3 text-xs font-semibold"
+                                    >
+                                        Style
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        @click="tab = 'advanced'"
+                                        :class="tab === 'advanced'
+                                            ? 'border-primary-600 text-primary-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'"
+                                        class="border-b-2 px-1 py-3 text-xs font-semibold"
+                                    >
+                                        Advanced
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+
+                            {{-- Scrollable Property Content --}}
+                            <div
+                                class="min-h-0 flex-1 overflow-y-auto"
+                                style="
+                                    min-height: 0;
+                                    overflow-y: auto;
+                                    scrollbar-width: thin;
+                                "
+                            >
+
+                                <div class="p-5">
+
+                                    {{-- GENERAL --}}
+                                    <div
+                                        x-show="tab === 'general'"
+                                        x-cloak
+                                        class="space-y-4"
+                                    >
+
+                                        {{-- Section --}}
+                                        @if ($selectedType === 'section')
+
+                                            <div class="grid grid-cols-2 gap-3">
+
+                                                <div>
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Container
+                                                    </label>
+
+                                                    <select
+                                                        wire:model="editingProps.container_mode"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+                                                        <option value="full">Full Width</option>
+                                                        <option value="boxed">Boxed</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Container Width
+                                                    </label>
+
+                                                    <div class="relative">
+
+                                                        <input
+                                                            type="number"
+                                                            min="320"
+                                                            max="2400"
+                                                            wire:model="editingProps.container_width"
+                                                            class="w-full rounded-lg border-gray-300
+                                                                   pr-9 text-sm
+                                                                   focus:border-primary-500
+                                                                   focus:ring-primary-500"
+                                                        >
+
+                                                        <span class="absolute right-3 top-2 text-xs text-gray-400">
+                                                            px
+                                                        </span>
+
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+
+                                        {{-- Row --}}
+                                        @elseif ($selectedType === 'row')
+
+                                            <div class="grid grid-cols-2 gap-3">
+
+                                                <div>
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Gap
+                                                    </label>
+
+                                                    <div class="relative">
+
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="200"
+                                                            wire:model="editingProps.gap"
+                                                            class="w-full rounded-lg border-gray-300
+                                                                   pr-9 text-sm
+                                                                   focus:border-primary-500
+                                                                   focus:ring-primary-500"
+                                                        >
+
+                                                        <span class="absolute right-3 top-2 text-xs text-gray-400">
+                                                            px
+                                                        </span>
+
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Alignment
+                                                    </label>
+
+                                                    <select
+                                                        wire:model="editingProps.alignment"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+                                                        <option value="stretch">Stretch</option>
+                                                        <option value="start">Start</option>
+                                                        <option value="center">Center</option>
+                                                        <option value="end">End</option>
+                                                    </select>
+                                                </div>
+
+                                            </div>
+
+
+                                        {{-- Column --}}
+                                        @elseif ($selectedType === 'column')
+
+                                            <div>
+
+                                                <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                    Width
+                                                </label>
+
+                                                <div class="relative">
+
+                                                    <input
+                                                        type="number"
+                                                        min="0.01"
+                                                        max="100"
+                                                        step="0.01"
+                                                        value="{{ $editingProps['width'] ?? 100 }}"
+                                                        wire:change="updateEditingProp('width', $event.target.value)"
+                                                        class="w-full rounded-lg border-gray-300
+                                                               pr-9 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+
+                                                    <span class="absolute right-3 top-2 text-xs text-gray-400">
+                                                        %
+                                                    </span>
+
+                                                </div>
+
+                                                <p class="mt-1 text-[11px] text-gray-400">
+                                                    Width is independent from other columns.
+                                                </p>
+
+                                            </div>
+
+
+                                        {{-- Heading --}}
+                                        @elseif ($selectedType === 'heading')
+
+                                            <div class="space-y-4">
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Heading Text
+                                                    </label>
+
+                                                    <input
+                                                        type="text"
+                                                        wire:model="editingProps.text.key"
+                                                        placeholder="Enter heading..."
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+
+                                                    <p class="mt-1 text-[11px] text-gray-400">
+                                                        This text will be translated with the page content.
+                                                    </p>
+
+                                                </div>
+
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Heading Level
+                                                    </label>
+
+                                                    <select
+                                                        wire:model="editingProps.level"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+
+                                                        @foreach (['h1','h2','h3','h4','h5','h6'] as $level)
+
+                                                            <option value="{{ $level }}">
+                                                                {{ strtoupper($level) }}
+                                                            </option>
+
+                                                        @endforeach
+
+                                                    </select>
+
+                                                </div>
+
+                                            </div>
+
+
+                                        {{-- Text --}}
+                                        @elseif ($selectedType === 'text')
+
+                                            <div class="space-y-4">
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                        Text Content
+                                                    </label>
+
+                                                    <textarea
+                                                        wire:model="editingProps.text.key"
+                                                        rows="6"
+                                                        placeholder="Enter your text..."
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    ></textarea>
+
+                                                    <p class="mt-1 text-[11px] text-gray-400">
+                                                        This text will be translated with the page content.
+                                                    </p>
+
+                                                </div>
+
+                                            </div>
+
+
+                                        {{-- Image --}}
+                                        @elseif ($selectedType === 'image')
+
+                                            <div class="space-y-4">
+
+                                                <div>
+
+                                                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                        Image
+                                                    </label>
+
+                                                    @if (!empty($editingProps['media_url']))
+
+                                                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+
+                                                            <img
+                                                                src="{{ $editingProps['media_url'] }}"
+                                                                alt=""
+                                                                class="mx-auto h-24 w-auto max-w-full object-contain bg-gray-50 dark:bg-gray-900"
+                                                            >
+
+                                                            <div class="flex items-center justify-between border-t border-gray-200 p-3 dark:border-gray-700">
+
+                                                                <span class="truncate text-xs text-gray-500">
+                                                                    {{ $editingProps['media_name'] ?? 'Selected image' }}
+                                                                </span>
+
+                                                                <div class="flex items-center gap-2">
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="$dispatch('open-media-picker', { context: 'cms-builder-image' })"
+                                                                        class="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
+                                                                    >
+                                                                        Change
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="removeImage"
+                                                                        class="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 dark:bg-red-950 dark:text-red-400"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+
+                                                                </div>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    @else
+
+                                                        <button
+                                                            type="button"
+                                                            wire:click="$dispatch('open-media-picker', { context: 'cms-builder-image' })"
+                                                            class="flex w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-sm font-medium text-gray-600 hover:border-primary-500 dark:border-gray-700 dark:text-gray-300"
+                                                        >
+                                                            <x-heroicon-o-photo class="mr-2 h-6 w-6" />
+                                                            Choose Image
+                                                        </button>
+
+                                                    @endif
+
+                                                </div>
+
+
+                                                <div>
+
+                                                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                        Alt Text
+                                                    </label>
+
+                                                    <input
+                                                        type="text"
+                                                        wire:model="editingProps.alt.key"
+                                                        placeholder="Image alternative text..."
+                                                        class="w-full rounded-lg border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                                                    >
+
+                                                </div>
+
+                                            </div>
+
+
+                                        {{-- Video --}}
+                                        @elseif ($selectedType === 'video')
+
+                                            <div class="space-y-4">
+
+                                                {{-- Video --}}
+                                                <div>
+
+                                                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                        Video
+                                                    </label>
+
+                                                    @if (!empty($editingProps['media_url']))
+
+                                                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+
+                                                            <video
+                                                                src="{{ $editingProps['media_url'] }}"
+                                                                controls
+                                                                class="mx-auto h-32 w-full bg-gray-900 object-contain"
+                                                            ></video>
+
+                                                            <div class="flex items-center justify-between border-t border-gray-200 p-3 dark:border-gray-700">
+
+                                                                <span class="truncate text-xs text-gray-500">
+                                                                    {{ $editingProps['media_name'] ?? 'Selected video' }}
+                                                                </span>
+
+                                                                <div class="flex items-center gap-2">
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="$dispatch('open-media-picker', { context: 'cms-builder-video' })"
+                                                                        class="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
+                                                                    >
+                                                                        Change
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="removeVideo"
+                                                                        class="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 dark:bg-red-950 dark:text-red-400"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+
+                                                                </div>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    @else
+
+                                                        <button
+                                                            type="button"
+                                                            wire:click="$dispatch('open-media-picker', { context: 'cms-builder-video' })"
+                                                            class="flex w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-sm font-medium text-gray-600 hover:border-primary-500 dark:border-gray-700 dark:text-gray-300"
+                                                        >
+                                                            <x-heroicon-o-video-camera class="mr-2 h-6 w-6" />
+                                                            Choose Video
+                                                        </button>
+
+                                                    @endif
+
+                                                </div>
+
+
+                                                {{-- Poster --}}
+                                                <div>
+
+                                                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                        Poster Image
+                                                    </label>
+
+                                                    @if (!empty($editingProps['poster_url']))
+
+                                                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+
+                                                            <img
+                                                                src="{{ $editingProps['poster_url'] }}"
+                                                                alt=""
+                                                                class="mx-auto h-24 w-auto max-w-full object-contain bg-gray-50 dark:bg-gray-900"
+                                                            >
+
+                                                            <div class="flex items-center justify-between border-t border-gray-200 p-3 dark:border-gray-700">
+
+                                                                <span class="truncate text-xs text-gray-500">
+                                                                    {{ $editingProps['poster_name'] ?? 'Selected poster' }}
+                                                                </span>
+
+                                                                <div class="flex items-center gap-2">
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="$dispatch('open-media-picker', { context: 'cms-builder-video-poster' })"
+                                                                        class="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200"
+                                                                    >
+                                                                        Change
+                                                                    </button>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        wire:click="removeVideoPoster"
+                                                                        class="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-100 dark:bg-red-950 dark:text-red-400"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+
+                                                                </div>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    @else
+
+                                                        <button
+                                                            type="button"
+                                                            wire:click="$dispatch('open-media-picker', { context: 'cms-builder-video-poster' })"
+                                                            class="flex w-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-sm font-medium text-gray-600 hover:border-primary-500 dark:border-gray-700 dark:text-gray-300"
+                                                        >
+                                                            <x-heroicon-o-photo class="mr-2 h-6 w-6" />
+                                                            Choose Poster Image
+                                                        </button>
+
+                                                    @endif
+
+                                                </div>
+
+
+                                                {{-- Video Options --}}
+                                                <div class="space-y-3">
+
+                                                    <label class="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            wire:model="editingProps.autoplay"
+                                                            class="rounded border-gray-300 text-primary-600 shadow-sm"
+                                                        >
+
+                                                        <span class="text-sm text-gray-700 dark:text-gray-200">
+                                                            Autoplay
+                                                        </span>
+                                                    </label>
+
+                                                    <label class="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            wire:model="editingProps.loop"
+                                                            class="rounded border-gray-300 text-primary-600 shadow-sm"
+                                                        >
+
+                                                        <span class="text-sm text-gray-700 dark:text-gray-200">
+                                                            Loop
+                                                        </span>
+                                                    </label>
+
+                                                    <label class="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            wire:model="editingProps.muted"
+                                                            class="rounded border-gray-300 text-primary-600 shadow-sm"
+                                                        >
+
+                                                        <span class="text-sm text-gray-700 dark:text-gray-200">
+                                                            Muted
+                                                        </span>
+                                                    </label>
+
+                                                    <label class="flex items-center gap-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            wire:model="editingProps.controls"
+                                                            class="rounded border-gray-300 text-primary-600 shadow-sm"
+                                                        >
+
+                                                        <span class="text-sm text-gray-700 dark:text-gray-200">
+                                                            Show Controls
+                                                        </span>
+                                                    </label>
+
+                                                </div>
+
+                                            </div>
+
+
+                                        {{-- Spacer --}}
+                                        @elseif ($selectedType === 'spacer')
+
+                                            <div>
+
+                                                <label class="mb-1 block text-xs font-medium text-gray-600">
+                                                    Height
+                                                </label>
+
+                                                <div class="relative">
+
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="1000"
+                                                        wire:model="editingProps.height"
+                                                        class="w-full rounded-lg border-gray-300
+                                                               pr-9 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+
+                                                    <span class="absolute right-3 top-2 text-xs text-gray-400">
+                                                        px
+                                                    </span>
+
+                                                </div>
+
+                                            </div>
+
+
+                                        @else
+
+                                            <div class="rounded-lg bg-gray-50 p-4 text-center">
+
+                                                <p class="text-xs text-gray-500">
+                                                    This element has no additional general settings.
+                                                </p>
+
+                                            </div>
+
+                                        @endif
+
+                                    </div>
+
+
+                                    {{-- STYLE --}}
+                                    <div
+                                        x-show="tab === 'style'"
+                                        x-cloak
+                                        class="space-y-5"
+                                    >
+
+                                        <div>
+
+                                            <div class="mb-2 text-xs font-semibold text-gray-900">
+                                                Spacing
+                                            </div>
+
+                                            <div class="grid grid-cols-2 gap-3">
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                        Padding
+                                                    </label>
+
+                                                    <input
+                                                        type="text"
+                                                        wire:model="editingProps.style.{{ $responsiveDevice }}.padding"
+                                                        placeholder="20px"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+
+                                                </div>
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                        Margin
+                                                    </label>
+
+                                                    <input
+                                                        type="text"
+                                                        wire:model="editingProps.style.{{ $responsiveDevice }}.margin"
+                                                        placeholder="0 auto"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div>
+
+                                            <div class="mb-2 text-xs font-semibold text-gray-900">
+                                                Layout
+                                            </div>
+
+                                            <div class="grid grid-cols-2 gap-3">
+
+                                                @if ($selectedType !== 'column')
+
+                                                    <div>
+
+                                                        <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                            Width
+                                                        </label>
+
+                                                        <input
+                                                            type="text"
+                                                            wire:model="editingProps.style.{{ $responsiveDevice }}.width"
+                                                            placeholder="100%"
+                                                            class="w-full rounded-lg border-gray-300 text-sm
+                                                                   focus:border-primary-500
+                                                                   focus:ring-primary-500"
+                                                        >
+
+                                                    </div>
+
+                                                @endif
+
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                        Alignment
+                                                    </label>
+
+                                                    <select
+                                                        wire:model="editingProps.style.{{ $responsiveDevice }}.alignment"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+                                                        <option value="">Default</option>
+                                                        <option value="left">Left</option>
+                                                        <option value="center">Center</option>
+                                                        <option value="right">Right</option>
+                                                    </select>
+
+                                                </div>
+
+
+                                                <div>
+
+                                                    <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                        Display
+                                                    </label>
+
+                                                    <select
+                                                        wire:model="editingProps.style.{{ $responsiveDevice }}.display"
+                                                        class="w-full rounded-lg border-gray-300 text-sm
+                                                               focus:border-primary-500
+                                                               focus:ring-primary-500"
+                                                    >
+                                                        <option value="">Default</option>
+                                                        <option value="block">Block</option>
+                                                        <option value="flex">Flex</option>
+                                                        <option value="none">None</option>
+                                                    </select>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div>
+
+                                            <div class="mb-2 text-xs font-semibold text-gray-900">
+                                                Background
+                                            </div>
+
+                                            <input
+                                                type="text"
+                                                wire:model="editingProps.style.{{ $responsiveDevice }}.background"
+                                                placeholder="#ffffff or linear-gradient(...)"
+                                                class="w-full rounded-lg border-gray-300 text-sm
+                                                       focus:border-primary-500
+                                                       focus:ring-primary-500"
+                                            >
+
+                                        </div>
+
+                                    </div>
+
+
+                                    {{-- ADVANCED --}}
+                                    <div
+                                        x-show="tab === 'advanced'"
+                                        x-cloak
+                                        class="space-y-5"
+                                    >
+
+                                        @if (in_array($selectedType, [
+                                            'section',
+                                            'row',
+                                            'column',
+                                        ], true))
+
+                                            <div>
+
+                                                <div class="mb-2 text-xs font-semibold text-gray-900">
+                                                    HTML Attributes
+                                                </div>
+
+                                                <div class="space-y-3">
+
+                                                    <div>
+
+                                                        <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                            ID
+                                                        </label>
+
+                                                        <input
+                                                            type="text"
+                                                            wire:model="editingProps.id"
+                                                            placeholder="my-section"
+                                                            class="w-full rounded-lg border-gray-300 text-sm
+                                                                   focus:border-primary-500
+                                                                   focus:ring-primary-500"
+                                                        >
+
+                                                    </div>
+
+
+                                                    <div>
+
+                                                        <label class="mb-1 block text-[11px] font-medium text-gray-500">
+                                                            CSS Classes
+                                                        </label>
+
+                                                        <input
+                                                            type="text"
+                                                            wire:model="editingProps.classes"
+                                                            placeholder="custom-class another-class"
+                                                            class="w-full rounded-lg border-gray-300 text-sm
+                                                                   focus:border-primary-500
+                                                                   focus:ring-primary-500"
+                                                        >
+
+                                                    </div>
+
+                                                </div>
+
+                                            </div>
+
+                                        @endif
+
+
+                                        <div class="rounded-lg bg-gray-50 p-3">
+
+                                            <div class="mb-2 text-xs font-semibold text-gray-700">
+                                                Block Information
+                                            </div>
+
+                                            <div class="space-y-1.5 text-[11px] text-gray-500">
+
+                                                <div class="flex items-center justify-between gap-3">
+
+                                                    <span>Type</span>
+
+                                                    <span class="font-medium text-gray-700">
+                                                        {{ $typeLabels[$selectedType] ?? $selectedType }}
+                                                    </span>
+
+                                                </div>
+
+                                                <div class="flex items-center justify-between gap-3">
+
+                                                    <span>UUID</span>
+
+                                                    <span class="max-w-[260px] truncate font-mono text-gray-600">
+                                                        {{ $selectedNodeId }}
+                                                    </span>
+
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                {{-- PROPERTIES FOOTER --}}
+                                <div
+                                    class="flex shrink-0 items-center justify-between
+                                           border-t border-gray-200 bg-white
+                                           px-5 py-3"
+                                >
+
+                                    <button
+                                        type="button"
+                                        wire:click="deleteNode('{{ $selectedNodeId }}')"
+                                        wire:confirm="Delete this block?"
+                                        class="rounded-lg px-3 py-2 text-xs
+                                               font-medium text-red-600
+                                               hover:bg-red-50"
+                                    >
+                                        Delete
+                                    </button>
+
+
+                                    <div class="flex gap-2">
+
+                                        <button
+                                            type="button"
+                                            wire:click="closePanel"
+                                            class="rounded-lg border border-gray-300
+                                                   bg-white px-3 py-2 text-xs
+                                                   font-medium text-gray-700
+                                                   hover:bg-gray-50"
+                                        >
+                                            Cancel
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            wire:click="saveProperties"
+                                            class="rounded-lg bg-primary-600
+                                                   px-4 py-2 text-xs
+                                                   font-semibold text-white
+                                                   hover:bg-primary-700"
+                                        >
+                                            Save Changes
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                    {{-- ==================================================
+                        SETTINGS
+                    =================================================== --}}
+                    @elseif ($panel === 'settings')
+
+                        <div
+                            class="h-full overflow-y-auto"
+                            style="height: 100%; overflow-y: auto;"
+                        >
+
+                            <div class="space-y-5 p-6">
+
+                                <div>
+
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">
+                                        Status
+                                    </label>
+
+                                    <select
+                                        wire:model="status"
+                                        class="block w-full rounded-lg border-gray-300
+                                               shadow-sm focus:border-primary-500
+                                               focus:ring-primary-500"
+                                    >
+
+                                        @foreach (\App\CMS\Shared\Enums\Status::cases() as $statusOption)
+
+                                            <option value="{{ $statusOption->value }}">
+                                                {{ ucfirst($statusOption->value) }}
+                                            </option>
+
+                                        @endforeach
+
+                                    </select>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">
+                                        Visibility
+                                    </label>
+
+                                    <select
+                                        wire:model="visibility"
+                                        class="block w-full rounded-lg border-gray-300
+                                               shadow-sm focus:border-primary-500
+                                               focus:ring-primary-500"
+                                    >
+
+                                        @foreach (\App\CMS\Shared\Enums\Visibility::cases() as $visibilityOption)
+
+                                            <option value="{{ $visibilityOption->value }}">
+                                                {{ ucfirst($visibilityOption->value) }}
+                                            </option>
+
+                                        @endforeach
+
+                                    </select>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">
+                                        Parent Page
+                                    </label>
+
+                                    <select
+                                        wire:model="parentId"
+                                        class="block w-full rounded-lg border-gray-300
+                                               shadow-sm focus:border-primary-500
+                                               focus:ring-primary-500"
+                                    >
+
+                                        <option value="">
+                                            — No Parent —
+                                        </option>
+
+                                        @foreach ($this->parentPageOptions as $pageId => $pageTitle)
+
+                                            <option value="{{ $pageId }}">
+                                                {{ $pageTitle }}
+                                            </option>
+
+                                        @endforeach
+
+                                    </select>
+
+                                    <p class="mt-1.5 text-xs text-gray-500">
+                                        Select a parent page to create a nested URL.
+                                    </p>
+
+                                </div>
+
+
+                                <div class="rounded-xl border border-gray-200
+                                            bg-gray-50 p-4">
+
+                                    <label class="flex cursor-pointer items-start gap-3">
+
+                                        <input
+                                            type="checkbox"
+                                            wire:model="isHomepage"
+                                            class="mt-1 rounded border-gray-300
+                                                   text-primary-600
+                                                   focus:ring-primary-500"
+                                        >
+
+                                        <div>
+
+                                            <div class="text-sm font-semibold text-gray-900">
+                                                Set as Homepage
+                                            </div>
+
+                                            <div class="mt-1 text-sm text-gray-500">
+                                                This page will be displayed when visitors open
+                                                <strong>{{ url('/') }}</strong>
+                                            </div>
+
+                                        </div>
+
+                                    </label>
+
+                                </div>
+
+
+                                <div>
+
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">
+                                        Published At
+                                    </label>
+
+                                    <input
+                                        type="datetime-local"
+                                        wire:model="publishedAt"
+                                        class="block w-full rounded-lg border-gray-300
+                                               shadow-sm focus:border-primary-500
+                                               focus:ring-primary-500"
+                                    >
+
+                                </div>
+
+
+                                <div>
+
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">
+                                        Scheduled At
+                                    </label>
+
+                                    <input
+                                        type="datetime-local"
+                                        wire:model="scheduledAt"
+                                        class="block w-full rounded-lg border-gray-300
+                                               shadow-sm focus:border-primary-500
+                                               focus:ring-primary-500"
+                                    >
+
+                                </div>
+
+
+                                <div class="flex justify-end gap-2
+                                            border-t border-gray-200 pt-5">
+
+                                    <button
+                                        type="button"
+                                        wire:click="closePanel"
+                                        class="rounded-lg border border-gray-300
+                                               bg-white px-4 py-2 text-sm
+                                               font-medium text-gray-700
+                                               hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        wire:click="savePageSettings"
+                                        class="rounded-lg bg-primary-600
+                                               px-5 py-2 text-sm font-semibold
+                                               text-white hover:bg-primary-700"
+                                    >
+                                        Save Settings
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    @endif
+
+                </div>
+
+            </div>
+
+        </div>
+
+    @endif
+
+</div>
+
+
+{{-- ============================================================
+    MEDIA PICKERS
+============================================================= --}}
+
+<livewire:media-picker context="cms-builder-image" />
+<livewire:media-picker context="cms-builder-video" />
+<livewire:media-picker context="cms-builder-video-poster" />
+
+
+</div>
